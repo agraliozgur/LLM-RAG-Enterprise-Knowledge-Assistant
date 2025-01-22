@@ -11,3 +11,5 @@ striprtf
 torch
 sentence-transformers
 qdrant-client
+sentencepiece
+
