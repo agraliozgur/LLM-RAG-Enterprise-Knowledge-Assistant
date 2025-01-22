@@ -1,0 +1,13 @@
+PyPDF2
+pdfplumber
+python-docx
+bs4
+lxml
+pytesseract
+Pillow
+python-pptx
+openpyxl
+striprtf
+torch
+sentence-transformers
+qdrant-client
