@@ -161,7 +161,7 @@ def extract_text_from_image(image_path: str) -> str:
         print(f"Error processing image {image_path}: {e}")
         return ""
 
-def chunk_text(text: str, chunk_size=500, overlap=50) -> list:
+def chunk_text(text: str, chunk_size=250, overlap=50) -> list:
     """
     Splits text into chunks of approximately chunk_size words with a specified overlap.
     Overlapping words can improve retrieval quality.
