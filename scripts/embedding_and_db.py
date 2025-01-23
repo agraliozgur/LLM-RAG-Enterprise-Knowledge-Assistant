@@ -29,7 +29,8 @@ def get_device():
 
 # 1) Model Yükleme
 # Örnek model: sentence-transformers/all-MiniLM-L6-v2
-EMBEDDING_MODEL_NAME = "intfloat/multilingual-e5-small"
+# EMBEDDING_MODEL_NAME = "intfloat/multilingual-e5-small"
+EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
 print("Loading embedding model...")
 device = get_device()
@@ -82,9 +83,9 @@ def upload_jsonl_chunks_to_qdrant(jsonl_path: str, collection_name: str):
     with open(jsonl_path, 'r', encoding='utf-8') as f:
         for line in f:
             data = json.loads(line)
-            # data içindeki alanlar: unique_id, file_name, extension, chunk_text, chunk_id, vb.
-            chunk_text = data.get("chunk_text", "")
-            if not chunk_text.strip():
+            # data içindeki alanlar: unique_id, file_name, extension, text, chunk_id, vb.
+            text = data.get("text", "")
+            if not text.strip():
                 continue
 
             # Metadata
@@ -92,7 +93,8 @@ def upload_jsonl_chunks_to_qdrant(jsonl_path: str, collection_name: str):
                 "source_file": data.get("file_name"),
                 "extension": data.get("extension"),
                 "chunk_id": data.get("chunk_id"),
-                "chunk_text": chunk_text
+                "text": text,
+                "page_content": text,
                 # gerektiğinde ek alanlar da eklenebilir
             }
 
@@ -102,7 +104,7 @@ def upload_jsonl_chunks_to_qdrant(jsonl_path: str, collection_name: str):
             # Burada rastgele bir uuid() oluşturabiliriz.
             point_id = str(uuid.uuid4())
 
-            batch_texts.append(chunk_text)
+            batch_texts.append(text)
             batch_ids.append(point_id)
             batch_metadata.append(meta)
 

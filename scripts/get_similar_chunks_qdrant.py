@@ -63,4 +63,13 @@ def query_similar_chunks(user_query: str, top_k: int = 3):
 # Örnek kullanım:
 if __name__ == "__main__":
     user_query_str = "Knowledge Assistants Live Stream on Jan 23rd:HOME < SOLUTIONS < ENTERPRİSE KNOWLEDGE ASSISTANT Selected Use Cases - Task Management Automation 1. Time-Off Coordination. Al Assistant seamlessiy communicates wit"
+    # user_query_str = "I tried speaking French, as carefully as I could (intermediate level) and it repeatedly transcribed something in Portuguese, which I definitely don't speak. My pronunciation can't be that bad, can it? Kind of discouraging. 1 Reply tsyrak OP 2y ago Releasing the option to turn OFF multilingual mode later today. I can't say about your pronunciation personally. In general though, pronunciation is sooo neglected in language learning it's a shame. Hopefully learning through speech will help a ton. 1 Reply tsyrak OP 2y ago Released the option to turn off multilingual speech recognition. Does it help? 1723\n12325, 12:47 AM I made a chatbot that lets you SPEAK to a French teacher : rlearnfrench Skip to mai1n content Reply Log In ImpossibleFox7622 2y ago Is this using GPT 3.5 or 4? 1 Reply tsyrak OP 2y ago 3.5 1 Reply citizenfaguo 2y ago Looks great. Do you intend to add Chinese soon? 1 Reply tsyrak OP 2y ago Thanks! Yes! A couple of friends have been requesting it, but days are always too short Will try to get this done at last tomorrow! 1 Reply kiva 2y ago Merci!"
     query_similar_chunks(user_query_str)
+
+
+"""
+Search Results:
+Score: 0.9203, Chunk ID: 0, Source: task_management_automation.png
+Score: 0.8587, Chunk ID: 7, Source: Twitter-Age Knowledge Management for You and Employees.pdf
+Score: 0.8560, Chunk ID: 7, Source: How Infosys Built an Enterprise Knowledge Management Assistant Using Generative AI on AWS _ AWS Partner Network (APN) Blog.pdf
+"""

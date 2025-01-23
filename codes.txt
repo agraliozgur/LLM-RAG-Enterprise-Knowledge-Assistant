@@ -1,2 +1,13 @@
 pip3 install -r ../requirements.txt --break-system-packages 
 docker run --name qdrant -v ./qdrant_data:/qdrant/storage  -p 6333:6333 qdrant/qdrant:latest
+pip install -U langchain-community
+# and if needed for huggingface or qdrant specifically:
+pip install -U langchain-huggingface langchain-qdrant
+pip install -U \
+  langchain-community \
+  langchain-huggingface \
+  langchain-qdrant \
+  qdrant-client \
+  transformers \
+  torch \
+  pydantic

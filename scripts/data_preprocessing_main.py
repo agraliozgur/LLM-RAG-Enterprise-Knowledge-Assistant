@@ -17,19 +17,49 @@ import io
 from pptx import Presentation
 import openpyxl
 from striprtf.striprtf import rtf_to_text  # For RTF files
+import re
+import nltk
+from nltk.tokenize import sent_tokenize
+nltk.download('punkt_tab')
 
 def clean_text(text: str) -> str:
     """
-    Performs basic text cleaning:
-    - Removes excessive whitespace
-    - Cleans newline and other unwanted characters
-    - Additional normalization if necessary
+    Metni temizler:
+    - URL'leri kaldırır
+    - HTML etiketlerini kaldırır
+    - İstenmeyen karakterleri siler
+    - Fazla boşlukları tek boşluk haline getirir
+    - Yeni satır karakterlerini temizler
+    - Metni baştan ve sondan boşluklardan arındırır
+    
+    Args:
+        text (str): Temizlenecek metin.
+        
+    Returns:
+        str: Temizlenmiş metin.
     """
-    # Replace newline characters with space
+    if not isinstance(text, str):
+        raise ValueError("Girdi metni bir string olmalıdır.")
+    
+    # 1. URL'leri kaldırma
+    text = re.sub(r'http\S+|www\.\S+', '', text, flags=re.MULTILINE)
+    
+    # 2. HTML etiketlerini kaldırma
+    text = re.sub(r'<.*?>', '', text)
+    
+    # 3. İstenmeyen karakterleri kaldırma (Türkçe karakterleri de korur)
+    # Noktalama işaretlerini koruyarak harf, rakam ve boşluk dışındakileri kaldırıyoruz
+    text = re.sub(r'[^A-Za-zÇŞĞÜÖİçşğüöı0-9.,\'!?;:()\s]', '', text)
+    
+    # 4. Yeni satır karakterlerini boşlukla değiştirme
     text = text.replace('\n', ' ')
-    # Collapse multiple spaces into one
+    
+    # 5. Fazla boşlukları tek boşluk haline getirme
     text = re.sub(r'\s+', ' ', text)
+    
+    # 6. Metni baştan ve sondan boşluklardan arındırma
     text = text.strip()
+    
     return text
 
 def extract_text_from_pdf(pdf_path: str) -> str:
@@ -177,7 +207,132 @@ def chunk_text(text: str, chunk_size=250, overlap=50) -> list:
         start += chunk_size - overlap
     return chunks
 
-def save_chunks_to_jsonl(unique_id: str, file_name: str, file_type: str, chunks: list, output_file):
+def chunk_text_sentence_based_no_overlap(text: str, chunk_size=150) -> list:
+    """
+    Metni cümle bazında böler ve her bir chunk'ın en fazla chunk_size kelime içermesini sağlar.
+    Her cümle sadece bir chunk içerisinde yer alır.
+    
+    Args:
+        text (str): Bölünecek metin.
+        chunk_size (int): Her chunk'ta bulunmasını istediğiniz maksimum kelime sayısı.
+        
+    Returns:
+        list: Bölünmüş metin chunk'larından oluşan liste.
+    """
+    # Metni cümlelere ayırın
+    sentences = sent_tokenize(text, language='turkish')
+    chunks = []
+    current_chunk = []
+    current_length = 0
+
+    for sentence in sentences:
+        sentence_words = sentence.split()
+        sentence_length = len(sentence_words)
+        
+        # Eğer cümlenin kendisi chunk_size'ı aşıyorsa, ayrı bir chunk olarak ekleyin
+        if sentence_length > chunk_size:
+            if current_chunk:
+                # Mevcut chunk'ı ekleyin
+                chunks.append(' '.join(current_chunk))
+                current_chunk = []
+                current_length = 0
+            # Uzun cümleyi kendi başına chunk olarak ekleyin
+            chunks.append(sentence)
+            continue
+        
+        # Eğer mevcut chunk'a eklemek, chunk_size'ı aşmıyorsa ekleyin
+        if current_length + sentence_length <= chunk_size:
+            current_chunk.append(sentence)
+            current_length += sentence_length
+        else:
+            # Mevcut chunk'ı ekleyin
+            if current_chunk:
+                chunks.append(' '.join(current_chunk))
+            # Yeni chunk başlatın
+            current_chunk = [sentence]
+            current_length = sentence_length
+    
+    # Kalan chunk'ı ekleyin
+    if current_chunk:
+        chunks.append(' '.join(current_chunk))
+    
+    return chunks
+
+
+def chunk_text_sentence_based_adjusted(text: str, chunk_size=200, min_extra=10) -> list:
+    """
+    Metni cümle bazında böler ve her bir chunk'ın en fazla chunk_size kelime içermesini sağlar.
+    Eğer son chunk 20 kelimeden az içeriyorsa, bu kelimeleri bir önceki chunk'a ekler.
+    Her cümle sadece bir chunk içerisinde yer alır.
+    
+    Args:
+        text (str): Bölünecek metin.
+        chunk_size (int): Her chunk'ta bulunmasını istediğiniz maksimum kelime sayısı.
+        min_extra (int): Son chunk'ın minimum kelime sayısı. Eğer son chunk bu sayının altındaysa, kelimeler bir önceki chunk'a eklenir.
+        
+    Returns:
+        list: Bölünmüş metin chunk'larından oluşan liste.
+    """
+    # Metni cümlelere ayırın
+    sentences = sent_tokenize(text, language='turkish')
+    chunks = []
+    current_chunk = []
+    current_length = 0
+
+    for sentence in sentences:
+        sentence_words = sentence.split()
+        sentence_length = len(sentence_words)
+        
+        # Eğer cümlenin kendisi chunk_size'ı aşıyorsa, ayrı bir chunk olarak ekleyin
+        if sentence_length > chunk_size:
+            if current_chunk:
+                # Mevcut chunk'ı ekleyin
+                chunks.append(' '.join(current_chunk))
+                current_chunk = []
+                current_length = 0
+            # Uzun cümleyi kendi başına chunk olarak ekleyin
+            chunks.append(sentence)
+            continue
+        
+        # Eğer mevcut chunk'a eklemek, chunk_size'ı aşmıyorsa ekleyin
+        if current_length + sentence_length <= chunk_size:
+            current_chunk.append(sentence)
+            current_length += sentence_length
+        else:
+            # Mevcut chunk'ı ekleyin
+            if current_chunk:
+                chunks.append(' '.join(current_chunk))
+            # Yeni chunk başlatın
+            current_chunk = [sentence]
+            current_length = sentence_length
+
+    # Kalan chunk'ı ekleyin
+    if current_chunk:
+        chunks.append(' '.join(current_chunk))
+    
+    # Son chunk'ın kelime sayısını kontrol edin
+    if len(chunks) >= 2:
+        last_chunk_words = len(chunks[-1].split())
+        if last_chunk_words < min_extra:
+            # Son chunk'ı bir önceki chunk'a ekleyin
+            previous_chunk = chunks[-2]
+            last_chunk = chunks[-1]
+            # Birleştirilmiş chunk'ın chunk_size'ı aşmamasına dikkat edin
+            combined_length = len(previous_chunk.split()) + last_chunk_words
+            if combined_length <= chunk_size:
+                # Birleştirme uygunsa yap
+                chunks[-2] = previous_chunk + ' ' + last_chunk
+                # Son chunk'ı kaldır
+                chunks.pop()
+            else:
+                # Aşarsa, yine de eklemek istiyorsanız, zorlayabilirsiniz
+                # veya bir uyarı verebilirsiniz. Burada, eklemeyi gerçekleştiriyoruz.
+                chunks[-2] = previous_chunk + ' ' + last_chunk
+                chunks.pop()
+    return chunks
+
+
+def save_chunks_to_jsonl(unique_id: str, file_name: str, extensionpe: str, chunks: list, output_file):
     """
     Saves text chunks to a single JSON Lines (JSONL) file.
     Each line in the file is a separate JSON object with metadata.
@@ -186,9 +341,9 @@ def save_chunks_to_jsonl(unique_id: str, file_name: str, file_type: str, chunks:
         json_record = {
             "unique_id": unique_id,
             "file_name": file_name,
-            "file_type": file_type,
+            "extensionpe": extensionpe,
             "chunk_id": i,
-            "chunk_text": chunk
+            "text": chunk
         }
         output_file.write(json.dumps(json_record, ensure_ascii=False) + '\n')
 
@@ -323,7 +478,9 @@ def preprocess_data_lake(data_lake_dir: str, output_file_path: str, log_file_pat
                     unique_id = str(uuid.uuid4())
                     text_content = process_file(fpath, temp_dir)
                     if text_content and text_content.strip():
-                        chunks = chunk_text(text_content)
+                        # chunks = chunk_text(text_content)
+                        # chunks = chunk_text_sentence_based_no_overlap(text_content)
+                        chunks = chunk_text_sentence_based_adjusted(text_content)
                         base_name = os.path.splitext(fname)[0]
                         save_chunks_to_jsonl(unique_id, fname, extension, chunks, output_file)
                     # After successful processing, log the file

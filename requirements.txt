@@ -12,4 +12,6 @@ torch
 sentence-transformers
 qdrant-client
 sentencepiece
-
+nltk
+langchain
+langchain-community
