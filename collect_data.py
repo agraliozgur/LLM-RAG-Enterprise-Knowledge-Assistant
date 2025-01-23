@@ -16,15 +16,17 @@ import logging
 
 # Configuration
 API_KEY = "AIzaSyCgaZ-ZUqvBumLwvVT7naSUOpmWYy6PaBE"
+API_KEY = "AIzaSyA1jOI59ix7vSFMY1fCP7ykqeGwLNVpZYM"
 
 
 # Configuration
 MODEL_NAME = "gemini-1.5-pro-latest"
-OUTPUT_FILENAME = "./data_lake/txt_files/synthetic_ekm_data.txt"
+MODEL_NAME = "gemini-1.5-flash-latest"
+OUTPUT_FILENAME = "./data_lake/txt_files/synthetic_ekm_data_flash.txt"
 
 # Setup logging
 logging.basicConfig(
-    filename='synthetic_ekm_generator.log',
+    filename='synthetic_ekm_generator2.log',
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )

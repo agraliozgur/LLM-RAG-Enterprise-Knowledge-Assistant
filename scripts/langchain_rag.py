@@ -1,79 +1,114 @@
-##################################################
+#!/usr/bin/env python3
 # FILE: compare_llm_vs_rag.py
-##################################################
-import json
+# --------------------------------------------------
+# Compare a direct LLM approach with an RAG (Retrieval-Augmented Generation) approach 
+# using a Qdrant vector store for enterprise knowledge retrieval.
+# --------------------------------------------------
+
+import logging
+import sys
+
 import torch
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 
-# Community-based or older imports for embeddings/vectorstores
+# Community-based or specialized imports for embeddings/vector stores
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Qdrant
 from langchain_huggingface import HuggingFacePipeline
 
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams
+from qdrant_client.models import Distance, VectorParams  # noqa: F401  # (In case needed for expansions)
 
-# For the RAG chain
+# For RetrievalQA
 from langchain.chains import RetrievalQA
-from langchain.prompts import PromptTemplate  # <--- We'll use this for custom instructions
+from langchain.prompts import PromptTemplate
 
-##################################################
-# CONFIGURATION
-##################################################
+# --------------------------------------------------
+# Logging Configuration
+# --------------------------------------------------
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+# --------------------------------------------------
+# Global Configuration
+# --------------------------------------------------
 QDRANT_URL = "http://localhost:6333"
 COLLECTION_NAME = "enterprise_chunks"
 
 LLM_MODEL_NAME = "google/flan-t5-large"
-# EMBED_MODEL_NAME can only have ONE value at a time, so pick one
+
+# Only one embed model can be used at a time; pick the one you prefer:
 EMBED_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
-# If you want to switch to e5, comment the above and uncomment:
+# Uncomment if you want to switch to E5-based embeddings:
 # EMBED_MODEL_NAME = "intfloat/multilingual-e5-small"
 
-def get_device():
-    """Detect GPU, MPS (Apple Silicon), or fallback to CPU."""
+# --------------------------------------------------
+# Device Detection
+# --------------------------------------------------
+def get_device() -> torch.device:
+    """
+    Detect GPU, MPS (Apple Silicon), or fallback to CPU.
+
+    Returns:
+        torch.device: The best available torch device.
+    """
+    # Try CUDA
     try:
         if torch.cuda.is_available():
-            print("CUDA is using.")
-            return torch.device('cuda')
-    except Exception as e:
-        print(f"CUDA checking: {e}")
+            logger.info("Using CUDA (GPU).")
+            return torch.device("cuda")
+    except Exception as exc:
+        logger.warning(f"CUDA check failed: {exc}")
 
+    # Try MPS (Apple Silicon)
     try:
         if torch.backends.mps.is_available():
-            print("MPS is using.")
-            return torch.device('mps')
+            logger.info("Using MPS (Apple Silicon).")
+            return torch.device("mps")
     except AttributeError:
-        print("MPS is not available.")
-    except Exception as e:
-        print(f"MPS checking: {e}")
+        logger.warning("MPS is not supported in this environment.")
+    except Exception as exc:
+        logger.warning(f"MPS check failed: {exc}")
 
-    print("CPU is in use.")
-    return torch.device('cpu')
+    # Fallback to CPU
+    logger.info("Using CPU.")
+    return torch.device("cpu")
 
-def main():
-    ########################
+# --------------------------------------------------
+# Main Routine
+# --------------------------------------------------
+def main() -> None:
+    """
+    1) Load embeddings & connect to Qdrant.
+    2) Build a RetrievalQA (RAG) chain with a custom prompt.
+    3) Build a direct LLM pipeline without retrieval.
+    4) Prompt user for questions and compare answers from:
+        (a) Plain LLM 
+        (b) RAG-based approach
+    """
     # 1) Embeddings & Qdrant
-    ########################
+    logger.info("Initializing embedding model...")
     embedding_model = HuggingFaceEmbeddings(model_name=EMBED_MODEL_NAME)
 
-    # Connect to Qdrant
+    logger.info(f"Connecting to Qdrant at: {QDRANT_URL}")
     qdrant_client = QdrantClient(url=QDRANT_URL)
 
-    # We assume the Qdrant collection is already created with the correct embedding dimension
-
+    # Assumes the Qdrant collection already exists with correct embedding dimension
+    logger.info(f"Setting up Qdrant vector store for collection: '{COLLECTION_NAME}'")
     vectorstore = Qdrant(
         client=qdrant_client,
         collection_name=COLLECTION_NAME,
         embeddings=embedding_model,
     )
 
-    ########################
     # 2) Build RAG Chain
-    ########################
+    logger.info(f"Loading LLM model '{LLM_MODEL_NAME}'...")
     tokenizer = AutoTokenizer.from_pretrained(LLM_MODEL_NAME)
     model = AutoModelForSeq2SeqLM.from_pretrained(LLM_MODEL_NAME)
 
-    print("Loading LLM model/pipeline...")
     device = get_device()
     hf_pipeline = pipeline(
         "text2text-generation",
@@ -83,10 +118,11 @@ def main():
         temperature=0.0,
         device=device
     )
+
+    # Wrap HF pipeline for LangChain
     llm_for_rag = HuggingFacePipeline(pipeline=hf_pipeline)
 
-    # --- Create a custom PromptTemplate for RAG
-    prompt_template = """
+    prompt_template_text = """
 You are an advanced enterprise knowledge assistant with direct access to a vector database of documents.
 For each user query, you retrieve the most relevant text passage(s) from the database, along with their similarity scores.
 
@@ -102,16 +138,15 @@ Your task is to produce a clear, correct, and complete answer in English, guided
    - If you find multiple relevant passages, integrate them into a single, well-structured response.
    - Use professional and concise language.
 
-3. If you are genuinely unsure or the context is incomplete, say: 
+3. If you are genuinely unsure or the context is incomplete, say:
    “I’m not sure based on the provided information.”
 
-4. Do not fabricate references or nonexistent data. 
+4. Do not fabricate references or nonexistent data.
    - It is better to say you do not have the information than to make it up.
 
 Remember, your final output should be a concise paragraph (or a few paragraphs if needed), using correct grammar and spelling. Always ensure the user is aware of whether or not the information came directly from the database.
 
 ----
-
 Below is the context retrieved from the database (if any):
 {context}
 
@@ -119,25 +154,27 @@ Question:
 {question}
 
 Now draft your best possible answer, following the above instructions.
-
 """.strip()
 
-    PROMPT = PromptTemplate(
-        template=prompt_template,
+    prompt = PromptTemplate(
+        template=prompt_template_text,
         input_variables=["context", "question"]
     )
 
+    logger.info("Building RetrievalQA (RAG) chain...")
     qa_chain = RetrievalQA.from_chain_type(
         llm=llm_for_rag,
-        chain_type="stuff",  # 'map_reduce', 'refine', etc. are also possible
-        retriever=vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 3}),
+        chain_type="stuff",
+        retriever=vectorstore.as_retriever(
+            search_type="similarity",
+            search_kwargs={"k": 3}
+        ),
         return_source_documents=True,
-        chain_type_kwargs={"prompt": PROMPT},  # <--- Insert custom prompt
+        chain_type_kwargs={"prompt": prompt}
     )
 
-    ########################
-    # 3) Build a Direct LLM Pipeline (No Retrieval)
-    ########################
+    # 3) Direct LLM Pipeline (No Retrieval)
+    logger.info("Building direct LLM pipeline (no retrieval)...")
     direct_llm_pipeline = pipeline(
         "text2text-generation",
         model=model,
@@ -147,18 +184,29 @@ Now draft your best possible answer, following the above instructions.
         device=device
     )
 
-    ########################
-    # 4) Define helper functions
-    ########################
+    # 4) Helper Functions
     def answer_with_rag(question: str) -> str:
-        """Use the RAG pipeline (RetrievalQA) to answer the question."""
+        """
+        Use the RAG pipeline (RetrievalQA) to answer a given question.
+
+        Args:
+            question (str): The user's query.
+
+        Returns:
+            str: The generated answer from the RAG approach.
+        """
         response = qa_chain.invoke(question)
         return response["result"]
 
     def answer_with_llm_direct(question: str) -> str:
         """
-        Use the direct pipeline (no retrieval).
-        Give a more complete prompt to guide T5 toward a helpful style:
+        Use the direct pipeline (no retrieval) to answer a question.
+
+        Args:
+            question (str): The user's query.
+
+        Returns:
+            str: The generated answer from the direct LLM approach.
         """
         direct_prompt = f"""
 You are an AI assistant specialized in enterprise knowledge. Answer the following question thoroughly.
@@ -171,28 +219,41 @@ Answer:
         raw_output = direct_llm_pipeline(direct_prompt.strip())
         return raw_output[0]["generated_text"]
 
-    ########################
-    # 5) Compare answers
-    ########################
+    # 5) Compare Answers in Interactive Loop
+    logger.info("Entering interactive question loop. Type 'exit' or 'quit' to stop.")
     while True:
-        query = input("\nEnter your question (or 'exit'/'quit' to stop): ")
-        if query.lower() in ["exit", "quit"]:
-            print("Exiting.")
+        try:
+            query = input("\nEnter your question (or 'exit'/'quit' to stop): ")
+        except EOFError:
+            logger.info("EOF encountered. Exiting.")
             break
 
-        # 5a) LLM alone
-        default_answer = answer_with_llm_direct(query)
+        if query.lower() in ["exit", "quit"]:
+            logger.info("User requested exit.")
+            break
 
-        # 5b) RAG-based
+        # (a) Direct LLM answer
+        default_answer = answer_with_llm_direct(query)
+        # (b) RAG-based answer
         rag_answer = answer_with_rag(query)
 
-        # 5c) Print both
+        # Print comparison
         print("\n=== COMPARISON ===")
         print(f"QUESTION: {query}")
-        print(f"\n[DEFAULT LLM ANSWER (no retrieval)]:\n{default_answer}")
-        print("-"*40)
-        print(f"[RAG ANSWER (with retrieval)]:\n{rag_answer}")
+        print("\n[DEFAULT LLM ANSWER (no retrieval)]:")
+        print(default_answer)
+        print("-" * 40)
+        print("[RAG ANSWER (with retrieval)]:")
+        print(rag_answer)
         print("===")
 
+
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        logger.info("Keyboard interrupt received. Exiting.")
+        sys.exit(0)
+    except Exception as e:
+        logger.exception(f"An unexpected error occurred: {e}")
+        sys.exit(1)

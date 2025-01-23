@@ -30,8 +30,8 @@ def get_device():
 
 # 1) Model Yükleme
 # Örnek model: intfloat/multilingual-e5-small
-# EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
-EMBEDDING_MODEL_NAME = "intfloat/multilingual-e5-small"
+EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+# EMBEDDING_MODEL_NAME = "intfloat/multilingual-e5-small"
 
 print("Loading embedding model...")
 device = device = get_device()

@@ -1,169 +1,304 @@
 import os
 import json
 import uuid
-from typing import List
+from typing import List, Dict, Any
+import logging
+
 import torch
 from sentence_transformers import SentenceTransformer
 from qdrant_client import QdrantClient
-from qdrant_client.http.models import Distance, VectorParams, CollectionStatus, Query
+from qdrant_client.http.models import (
+    Distance,
+    VectorParams,
+    CollectionStatus,
+)
 
-def get_device():
+# -------------------------------------------------------------------
+# Setup Logging
+# -------------------------------------------------------------------
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+# -------------------------------------------------------------------
+# Constants & Global Config
+# -------------------------------------------------------------------
+EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+QDRANT_URL = "http://localhost:6333"
+COLLECTION_NAME = "enterprise_chunks"
+BATCH_SIZE = 32  # Adjust batch size as needed
+JSONL_PATH = "../cleaned_data/all_processed_data.jsonl"  # Path to your JSONL file
+
+# -------------------------------------------------------------------
+# Device Management
+# -------------------------------------------------------------------
+def get_device() -> torch.device:
+    """
+    Determine the best available device (CUDA, MPS, or CPU) for torch.
+    """
+    # Try CUDA
     try:
         if torch.cuda.is_available():
-            print("CUDA is using.")
-            return torch.device('cuda')
+            logger.info("Using CUDA (GPU).")
+            return torch.device("cuda")
     except Exception as e:
-        print(f"CUDA checking: {e}")
+        logger.warning(f"CUDA check failed: {e}")
 
+    # Try MPS (Apple Silicon)
     try:
         if torch.backends.mps.is_available():
-            print("MPS is using.")
-            return torch.device('mps')
+            logger.info("Using MPS (Apple Silicon).")
+            return torch.device("mps")
     except AttributeError:
-        print("MPS desteği mevcut değil.")
+        logger.warning("MPS is not supported in this environment.")
     except Exception as e:
-        print(f"MPS checking: {e}")
+        logger.warning(f"MPS check failed: {e}")
 
-    print("CPU kullanılıyor.")
-    return torch.device('cpu')
+    # Fallback to CPU
+    logger.info("Using CPU.")
+    return torch.device("cpu")
 
-# 1) Model Yükleme
-# Örnek model: sentence-transformers/all-MiniLM-L6-v2
-# EMBEDDING_MODEL_NAME = "intfloat/multilingual-e5-small"
-EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
-
-print("Loading embedding model...")
-device = get_device()
-model = SentenceTransformer(EMBEDDING_MODEL_NAME, device=device)
-
-# 2) Qdrant Client Oluşturma (varsayılan localhost:6333)
-qdrant_client = QdrantClient(url="http://localhost:6333")
-
-COLLECTION_NAME = "enterprise_chunks"
-
-def create_collection_if_not_exists(collection_name: str, vector_size: int):
+# -------------------------------------------------------------------
+# Embedding Model
+# -------------------------------------------------------------------
+def load_embedding_model(model_name: str, device: torch.device) -> SentenceTransformer:
     """
-    Qdrant üzerinde bir koleksiyon yoksa oluşturur.
+    Load a SentenceTransformer embedding model onto the specified device.
+    
+    Args:
+        model_name (str): Name or path of the embedding model.
+        device (torch.device): Torch device to load the model on.
+    
+    Returns:
+        SentenceTransformer: The loaded embedding model.
     """
-    collections = qdrant_client.get_collections()
-    existing_collections = [c.name for c in collections.collections]
+    logger.info(f"Loading embedding model '{model_name}'...")
+    return SentenceTransformer(model_name, device=device)
 
-    if collection_name not in existing_collections:
-        print(f"Collection '{collection_name}' not found. Creating new collection...")
+# -------------------------------------------------------------------
+# Qdrant Client & Collection Setup
+# -------------------------------------------------------------------
+def create_collection_if_not_exists(
+    qdrant_client: QdrantClient,
+    collection_name: str,
+    vector_size: int
+) -> None:
+    """
+    Create a Qdrant collection if it doesn't exist.
+
+    Args:
+        qdrant_client (QdrantClient): An instance of QdrantClient.
+        collection_name (str): Name of the Qdrant collection.
+        vector_size (int): Dimension of the embedding vectors.
+    """
+    collections_response = qdrant_client.get_collections()
+    existing_names = [c.name for c in collections_response.collections]
+
+    if collection_name not in existing_names:
+        logger.info(f"Collection '{collection_name}' not found. Creating a new collection...")
         qdrant_client.create_collection(
             collection_name=collection_name,
             vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE)
         )
+        logger.info(f"Collection '{collection_name}' created successfully.")
     else:
-        print(f"Collection '{collection_name}' already exists.")
+        logger.info(f"Collection '{collection_name}' already exists.")
 
-def embed_texts(texts: List[str]) -> List[List[float]]:
+# -------------------------------------------------------------------
+# Text Embedding
+# -------------------------------------------------------------------
+def embed_texts(model: SentenceTransformer, texts: List[str]) -> List[List[float]]:
     """
-    Bir liste metni verip, embedding modelinden vektör döndürür.
+    Embed a list of texts using the provided model.
+
+    For E5-based models, it's common to prefix text with "passage:" or "query:".
+    Here, we use the "passage:" prefix by default.
+
+    Args:
+        model (SentenceTransformer): The embedding model.
+        texts (List[str]): List of raw text strings.
+
+    Returns:
+        List[List[float]]: A list of embedding vectors.
     """
-    # E5 modelinde genelde metin önüne 'query: ' veya 'passage: ' eklenir.
-    # Ama chunk'ları "passage: " ile işlemek yaygın bir yaklaşım.
-    # (Resmi E5 dokümantasyonunda bu prefixlerden bahsediliyor.)
     processed_texts = [f"passage: {t.strip()}" for t in texts]
     embeddings = model.encode(processed_texts, convert_to_numpy=True)
     return embeddings.tolist()
 
-def upload_jsonl_chunks_to_qdrant(jsonl_path: str, collection_name: str):
+# -------------------------------------------------------------------
+# Qdrant Upsert Functions
+# -------------------------------------------------------------------
+def flush_batch_to_qdrant(
+    qdrant_client: QdrantClient,
+    model: SentenceTransformer,
+    texts: List[str],
+    ids: List[str],
+    metas: List[Dict[str, Any]],
+    collection_name: str
+) -> None:
     """
-    JSONL dosyasını okuyup, her chunk'ı embed edip Qdrant'a yazar.
+    Compute embeddings for a batch of texts and upsert them into Qdrant.
+
+    Args:
+        qdrant_client (QdrantClient): An instance of QdrantClient.
+        model (SentenceTransformer): The embedding model.
+        texts (List[str]): List of text strings to embed.
+        ids (List[str]): List of unique point IDs.
+        metas (List[Dict[str, Any]]): List of metadata dicts.
+        collection_name (str): Name of the Qdrant collection.
     """
-    # Örnek bir batch listesi hazırlayacağız
+    vectors = embed_texts(model, texts)
+    points = [
+        {
+            "id": ids[i],
+            "vector": vectors[i],
+            "payload": metas[i]
+        }
+        for i in range(len(vectors))
+    ]
+
+    qdrant_client.upsert(
+        collection_name=collection_name,
+        points=points
+    )
+    logger.debug(f"Upserted {len(points)} points into collection '{collection_name}'.")
+
+# -------------------------------------------------------------------
+# Main Upload Logic
+# -------------------------------------------------------------------
+def upload_jsonl_chunks_to_qdrant(
+    qdrant_client: QdrantClient,
+    model: SentenceTransformer,
+    jsonl_path: str,
+    collection_name: str,
+    batch_size: int = BATCH_SIZE
+) -> None:
+    """
+    Read a JSONL file, embed the chunks, and upsert them to a Qdrant collection.
+
+    Expects each line in the JSONL to be a JSON object containing:
+        - file_name
+        - extension
+        - text
+        - chunk_id
+        - (optionally) a pre-generated unique_id or anything else you need.
+
+    Args:
+        qdrant_client (QdrantClient): Instance of QdrantClient.
+        model (SentenceTransformer): The embedding model.
+        jsonl_path (str): Path to the JSONL file.
+        collection_name (str): Name of the Qdrant collection.
+        batch_size (int): Number of chunks to accumulate before upserting to Qdrant.
+    """
     batch_texts = []
     batch_ids = []
     batch_metadata = []
 
-    # Aşağıda batch işlem: her N chunk'ta bir Qdrant'a yazma (örneğin 32, 64, 128).
-    BATCH_SIZE = 32
-
-    with open(jsonl_path, 'r', encoding='utf-8') as f:
-        for line in f:
-            data = json.loads(line)
-            # data içindeki alanlar: unique_id, file_name, extension, text, chunk_id, vb.
-            text = data.get("text", "")
-            if not text.strip():
+    with open(jsonl_path, "r", encoding="utf-8") as f:
+        for line_idx, line in enumerate(f, start=1):
+            try:
+                data = json.loads(line)
+            except json.JSONDecodeError as e:
+                logger.warning(f"Line {line_idx} skipped (JSON error): {e}")
                 continue
 
-            # Metadata
+            text = data.get("text", "").strip()
+            if not text:
+                logger.debug(f"Line {line_idx} has empty or missing 'text' field. Skipping.")
+                continue
+
+            # Create metadata
             meta = {
                 "source_file": data.get("file_name"),
                 "extension": data.get("extension"),
                 "chunk_id": data.get("chunk_id"),
                 "text": text,
                 "page_content": text,
-                # gerektiğinde ek alanlar da eklenebilir
+                # Add more fields as needed
             }
 
-            # Qdrant'a gönderilecek ID:
-            #   -> Orijinal unique_id + chunk_id kombinasyonundan bir UUID türetebiliriz
-            #   -> Veya data içinde halihazırda bir "uuid" varsa onu kullanabiliriz.
-            # Burada rastgele bir uuid() oluşturabiliriz.
+            # Either use existing UUID or generate a new one
+            # Here we simply generate a random UUID each time
             point_id = str(uuid.uuid4())
 
             batch_texts.append(text)
             batch_ids.append(point_id)
             batch_metadata.append(meta)
 
-            if len(batch_texts) >= BATCH_SIZE:
-                # Bu batch'i Qdrant'a gönder
-                flush_batch_to_qdrant(batch_texts, batch_ids, batch_metadata, collection_name)
-                # Sonra batch listelerini temizleyelim
+            # If we reach the batch limit, flush the batch to Qdrant
+            if len(batch_texts) >= batch_size:
+                flush_batch_to_qdrant(
+                    qdrant_client,
+                    model,
+                    batch_texts,
+                    batch_ids,
+                    batch_metadata,
+                    collection_name
+                )
                 batch_texts.clear()
                 batch_ids.clear()
                 batch_metadata.clear()
 
-        # Döngü bitti, elde kalan batch varsa onu da gönderelim
-        if batch_texts:
-            flush_batch_to_qdrant(batch_texts, batch_ids, batch_metadata, collection_name)
+    # Flush remaining items if they exist
+    if batch_texts:
+        flush_batch_to_qdrant(
+            qdrant_client,
+            model,
+            batch_texts,
+            batch_ids,
+            batch_metadata,
+            collection_name
+        )
 
-def flush_batch_to_qdrant(texts: List[str], ids: List[str], metas: List[dict], collection_name: str):
+# -------------------------------------------------------------------
+# Main Routine
+# -------------------------------------------------------------------
+def main():
     """
-    Embedding hesaplayıp Qdrant'a batch halinde insert/upsert yapar.
+    Main entry point for loading embeddings, creating Qdrant collection,
+    and uploading text chunks from a JSONL file.
     """
-    vectors = embed_texts(texts)
-    # Qdrant 'points' formatı: 
-    #  [
-    #    { "id": <str or int>, "vector": [float], "payload": {...} },
-    #    ...
-    #  ]
-    points = []
-    for i in range(len(vectors)):
-        points.append({
-            "id": ids[i],
-            "vector": vectors[i],
-            "payload": metas[i]
-        })
+    # Determine device
+    device = get_device()
 
-    # Upsert metodu, var olan IDs ile çakışma varsa günceller, yoksa ekler.
-    qdrant_client.upsert(
-        collection_name=collection_name,
-        points=points
+    # Load model
+    model = load_embedding_model(EMBEDDING_MODEL_NAME, device=device)
+
+    # Connect to Qdrant
+    qdrant_client = QdrantClient(url=QDRANT_URL)
+
+    # Get vector dimension
+    # Some SentenceTransformer models expose get_sentence_embedding_dimension() 
+    # to directly obtain the dimension, but not all do. If not, we can encode an example.
+    try:
+        vector_size = model.get_sentence_embedding_dimension()
+    except AttributeError:
+        example_vector = model.encode(["passage: test"], convert_to_numpy=True)[0]
+        vector_size = len(example_vector)
+
+    logger.info(f"Detected embedding vector size: {vector_size}")
+
+    # Ensure collection is created
+    create_collection_if_not_exists(qdrant_client, COLLECTION_NAME, vector_size)
+
+    # Upload data from JSONL
+    upload_jsonl_chunks_to_qdrant(
+        qdrant_client,
+        model,
+        jsonl_path=JSONL_PATH,
+        collection_name=COLLECTION_NAME,
+        batch_size=BATCH_SIZE
     )
 
-def main():
-    jsonl_path = "../cleaned_data/all_processed_data.jsonl"  # senin oluşturduğun jsonl path'i
-    # Modelin boyutunu öğrenmemiz lazım (embedding dimension).
-    # E5-small genelde 512 boyutlu. 
-    # (Dilersen model.config veya encode örneğiyle dimension'ı teyit edebilirsin)
-    example_vector = model.encode(["passage: test"])[0]
-    vector_size = len(example_vector)
-    print(f"Detected vector size: {vector_size}")
-
-    # Qdrant Collection oluşturma
-    create_collection_if_not_exists(COLLECTION_NAME, vector_size)
-
-    # Verileri JSONL'den Qdrant'a yükle
-    upload_jsonl_chunks_to_qdrant(jsonl_path, COLLECTION_NAME)
-
-    # Kontrol amaçlı koleksiyon durumunu yazdır.
-    coll_info = qdrant_client.get_collection(collection_name=COLLECTION_NAME)
-    print("Collection status:", coll_info.status)
-    if coll_info.status == CollectionStatus.GREEN:
-        print("Collection is ready to serve queries!")
+    # Verify collection status
+    collection_info = qdrant_client.get_collection(collection_name=COLLECTION_NAME)
+    logger.info(f"Collection status: {collection_info.status}")
+    if collection_info.status == CollectionStatus.GREEN:
+        logger.info("Collection is ready to serve queries!")
+    else:
+        logger.warning(f"Collection '{COLLECTION_NAME}' is not ready. Current status: {collection_info.status}")
 
 if __name__ == "__main__":
     main()
