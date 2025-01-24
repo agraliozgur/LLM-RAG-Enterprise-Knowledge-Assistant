@@ -11,3 +11,32 @@ pip install -U \
   transformers \
   torch \
   pydantic
+
+docker run --name qdrant -v ./data/vector_index:/qdrant/storage  -p 6333:6333 qdrant/qdrant:latest
+
+1: create_data
+2: preprocess
+3. embed.
+4 get similar
+
+
+
+
+corporate_info_assistant/
+├── config/
+│   └── project_settings.yaml
+├── data/
+│   ├── raw/                # Unprocessed files
+│   ├── cleaned_data/       # Cleaned, chunked data (JSONL, logs, etc.)
+│   └── vector_index/       # (Optional) Local index if not using external DB
+├── scripts/
+│   ├── data_preprocessing.py  # (Your existing script)
+│   ├── embed_and_index.py     # Vectorize & push to Qdrant (or other DB)
+│   ├── alignment.py           # Alignment & policy enforcement (placeholder)
+│   ├── rag_inference.py       # Retrieval + LLM integration
+│   ├── mlops_pipeline.py      # Monitoring, CI/CD, etc. (placeholder)
+│   └── utils.py               # Common utility functions
+├── models/                    # (Optional) Local model weights/checkpoints
+├── tests/                     # Unit/integration tests
+├── requirements.txt           # Python dependencies
+└── README.md

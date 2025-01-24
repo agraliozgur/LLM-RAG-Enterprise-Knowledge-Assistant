@@ -612,8 +612,8 @@ def preprocess_data_lake(
 
 if __name__ == "__main__":
     # Example usage: adjust paths as needed
-    data_lake_directory = "../data_lake"  # Path to your data lake directory
-    output_jsonl_file = "../cleaned_data/all_processed_data.jsonl"  # Output JSONL file path
-    processed_files_log = "../cleaned_data/all_processed_files.log"  # Log file path
+    data_lake_directory = "../data/raw"  # Path to your data lake directory
+    output_jsonl_file = "../data/cleaned_data/all_processed_data.jsonl"  # Output JSONL file path
+    processed_files_log = "../data/cleaned_data/all_processed_files.log"  # Log file path
 
     preprocess_data_lake(data_lake_directory, output_jsonl_file, processed_files_log)

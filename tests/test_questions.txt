@@ -1,0 +1,45 @@
+Below are sample questions and prompts you could use to compare a default LLM (no retrieval) versus your RAG-enhanced LLM that leverages the synthetic Enterprise Knowledge Management (EKM) data. These questions are specifically crafted to probe the model’s ability to recall or reason about details found in the synthetic case studies you generated.
+
+1. Strategic & High-Level
+“In your synthetic EKM case studies, how does a mid-sized healthcare company’s Human Resources department measure improvements in knowledge retention?”
+
+Intent: Checks whether the model can recall department-specific metrics or outcomes from the synthetic data.
+“Which EKM challenges are most common in a global manufacturing firm’s Supply Chain department, and how were they addressed?”
+
+Intent: Evaluates whether the model can retrieve specific details about Supply Chain-related solutions and challenges.
+“Summarize the top three enterprise knowledge management strategies implemented in a large manufacturing company’s R&D department.”
+
+Intent: Tests the model’s summarization of domain-specific solutions.
+2. Department & Industry-Focused
+“What knowledge management tools did the compliance department of a multinational finance corporation adopt, and what outcomes were observed?”
+
+Intent: Checks if the model can recall or retrieve specific tools and results relevant to finance/compliance.
+“Explain how a retail company’s Marketing department overcame knowledge sharing barriers. What specific EKM technologies were deployed?”
+
+Intent: Looks for references to marketing-oriented solutions and relevant EKM platforms.
+“Describe the AI-powered search engines used by a technology startup’s IT department to improve knowledge workflows. Were they effective?”
+
+Intent: Assesses the model’s ability to reference AI-based EKM solutions and their effectiveness.
+3. Detailed Usage & Outcomes
+“What were the measurable outcomes (in percentages or other metrics) after a large healthcare provider’s IT department integrated EKM tools?”
+
+Intent: Prompts the model to pull numeric or otherwise concrete outcome data from the synthetic case studies.
+“In the synthetic data, how did a financial services firm in Operations department reduce project turnaround times through knowledge management?”
+
+Intent: Seeks a connection between knowledge management and project efficiency metrics.
+“Which EKM platforms did a mid-sized technology firm’s Human Resources department combine, and how did it impact new employee onboarding?”
+
+Intent: Checks if the model can recall details about tool integration (e.g., Confluence, Slack, Teams) and the resulting impact.
+4. Comparison & Analysis
+“Between the default LLM and the RAG model, which one can provide more specific details on the key challenges faced by a multinational finance corporation in the Compliance department, and why?”
+Intent: Explicitly asks for a meta-comparison, encouraging you to see how each model references the data. The RAG model should pull actual case study snippets, whereas the default LLM might give generic statements.
+“Why does the RAG-based LLM provide more accurate tool references and numeric outcomes for an automotive company’s Procurement department than the default LLM?”
+Intent: Encourages a direct comparison, highlighting the value of retrieval from synthetic data.
+“List three distinct differences in the approach to knowledge sharing in a hospitality company’s Customer Service department as described in your synthetic database. Then compare how the default LLM and the RAG-based LLM handle this request.”
+Intent: Guides you to see how each model responds. The RAG-based LLM should ideally recall synthetic data references.
+Usage Tips
+High-Level vs. Detail-Specific: Ask broad questions (e.g., “What does knowledge management generally look like in an automotive company?”) alongside detail-oriented prompts (e.g., “Name two EKM tools used in the automotive procurement scenario and their impact.”).
+Metrics & Outcomes: The synthetic data includes measurable outcomes (like “percentage improvements”), so ask for numerical or statistical evidence to see if the RAG model can retrieve that detail.
+Department & Industry Crossovers: Ask about specific combinations (e.g., a finance company in the R&D department) to test how precisely each model recalls or retrieves from the underlying data.
+Comparison Queries: Some prompts should explicitly request a comparison of how the default LLM and the RAG model answer, highlighting the retrieval advantage in the latter.
+Using these questions and prompts should help you test and demonstrate the difference between a generic (default) language model’s knowledge and your custom RAG-based approach that leverages the synthetic EKM data you’ve generated.

@@ -15,3 +15,5 @@ sentencepiece
 nltk
 langchain
 langchain-community
+mlflow
+datasets
