@@ -2,7 +2,7 @@ import google.generativeai as genai
 import json
 
 # API anahtarınızı buraya ekleyin (https://aistudio.google.com/app/apikey)
-API_KEY = "AIzaSyCgaZ-ZUqvBumLwvVT7naSUOpmWYy6PaBE"
+API_KEY = "YOUR_API_TOKEN"
 MODEL_NAME = "gemini-1.5-pro-latest"
 
 # Configure the model

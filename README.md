@@ -1,6 +1,13 @@
 # Enterprise-Knowledge-Assistant
 
-A **Retrieval-Augmented Generation (RAG)** system for answering corporate document queries using an LLM, with alignment for security and ethics, plus MLOps integrations.
+A **Retrieval-Augmented Generation (RAG)** system for answering corporate document queries using an LLM, with alignment for security and ethics, plus MLOps integrations. 
+The models used in this project were intentionally chosen to not be excessively large. This ensures that the project can run on various systems, including CPU, GPU, or Apple's MPS for Silicon-based devices. For example, I successfully ran the large model on a 2023 M2 Pro MacBook. If a better GPU setup is available, larger language models (LLMs) can be utilized for more effective results.
+
+Despite working with over 1,000 data samples, I achieved impressive results in both alignment and retrieving relevant information. If necessary, the dataset can be expanded, the model can be changed, or the embedding extraction model can be replaced. The project is designed to efficiently retrieve information from documents using a Retrieval-Augmented Generation (RAG) pipeline.
+
+Additionally, a data flow pipeline can be implemented for future iterations, or you can contribute to the development of these features. This project supports directly reading various file types, extracting their text, storing them in a database, generating vector embeddings, and enabling queries with RAG. Furthermore, the LLM component has been aligned with proper policies and safeguards, making it ready for immediate use.
+
+Future work could include deploying this system as a service, from data collection to deployment.
 
 ---
 
@@ -57,7 +64,7 @@ corporate_info_assistant/
 ├── requirements.txt
 ├── .gitignore
 └── README.md
-docker run --name qdrant -v ./data/vector_index:/qdrant/storage  -p 6333:6333 qdrant/qdrant:latest
+
 
 
 ---

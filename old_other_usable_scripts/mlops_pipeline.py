@@ -39,7 +39,7 @@ EXPERIMENT_NAME = "RAG_MLOps_Demo"
 
 # Hugging Face repository info
 HF_MODEL_REPO = "ozguragrali/llm-rag-google-flan-t5-large-corporate_info_assistant"
-HF_TOKEN = os.environ.get("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", "")  # Set your HF token: export HF_API_TOKEN="..."
+HF_TOKEN = os.environ.get("YOUR_HF_TOKEN","")
 
 # Base model to fine-tune
 BASE_MODEL_NAME = "google/flan-t5-large"
@@ -243,7 +243,7 @@ def log_experiment_and_push_model(
         )
 
     # Clone or pull latest
-    local_repo_dir = "hf_repo_temp"
+    local_repo_dir = "YOUR_HF_TOKEN"
     if os.path.exists(local_repo_dir):
         shutil.rmtree(local_repo_dir, ignore_errors=True)
 

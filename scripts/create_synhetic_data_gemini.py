@@ -3,7 +3,7 @@ import time
 import logging
 
 # Configuration
-API_KEY = "AIzaSyA1jOI59ix7vSFMY1fCP7ykqeGwLNVpZYM"
+API_KEY = "YOUR_API_TOKEN"
 
 
 # Configuration

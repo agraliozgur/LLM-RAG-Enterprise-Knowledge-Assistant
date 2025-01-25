@@ -15,8 +15,8 @@ import time
 import logging
 
 # Configuration
-API_KEY = "AIzaSyCgaZ-ZUqvBumLwvVT7naSUOpmWYy6PaBE"
-API_KEY = "AIzaSyA1jOI59ix7vSFMY1fCP7ykqeGwLNVpZYM"
+API_KEY = "YOUR_API_TOKEN"
+API_KEY = "YOUR_API_TOKEN"
 
 
 # Configuration
