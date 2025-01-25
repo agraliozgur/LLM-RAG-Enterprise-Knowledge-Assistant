@@ -145,16 +145,7 @@ python scripts/mlops_pipeline.py
 ---
 
 ## Saving & Reusing a Fine-Tuned Model
-
-If you fine-tune `google/flan-t5-large`:
-1. Run your fine-tuning script (not shown here).
-2. Use `utils.save_model(finetuned_model, tokenizer, "./models/my_finetuned_flan_t5_large")`.
-3. Update `project_settings.yaml`:
-   ```yaml
-   models:
-     llm_model_name: "./models/my_finetuned_flan_t5_large"
-   ```
-4. Future scripts will saving & reusing a Fine-Tuned model and load your local checkpoint instead of the base model from Hugging Face.
+Future scripts will saving & reusing a Fine-Tuned model and load your local checkpoint instead of the base model from Hugging Face.
 
 ---
 
