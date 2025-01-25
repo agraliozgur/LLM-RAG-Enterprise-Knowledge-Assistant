@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Example: Basic policy checks
-RESTRICTED_KEYWORDS = ["secret_code", "internal_server", "classified"]
+RESTRICTED_KEYWORDS = ["secret_code", "internal_server", "classified", "social security number", "offensive_term"]
 
 def violates_policy(answer_text: str) -> bool:
     """

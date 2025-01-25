@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
 # FILE: compare_llm_vs_rag.py
 # --------------------------------------------------
-# Compare a direct LLM approach with an RAG (Retrieval-Augmented Generation) approach 
-# using a Qdrant vector store for enterprise knowledge retrieval.
+# Compare a direct LLM approach with an RAG (Retrieval-Augmented Generation) 
+# approach using a Qdrant vector store for enterprise knowledge retrieval.
 # --------------------------------------------------
 
-import logging
 import sys
-
-import torch
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 
 # Community-based or specialized imports for embeddings/vector stores
@@ -17,67 +14,26 @@ from langchain_community.vectorstores import Qdrant
 from langchain_huggingface import HuggingFacePipeline
 
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams  # noqa: F401  # (In case needed for expansions)
 
 # For RetrievalQA
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 from alignment import align_answer
+from utils import load_config, get_logger, get_device
 
-
+# 1) Load Configuration & Logger
 # --------------------------------------------------
-# Logging Configuration
-# --------------------------------------------------
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
-logger = logging.getLogger(__name__)
+config = load_config()
+logger = get_logger(__name__)
 
-# --------------------------------------------------
-# Global Configuration
-# --------------------------------------------------
-QDRANT_URL = "http://localhost:6333"
-COLLECTION_NAME = "enterprise_chunks"
+# Reading from YAML config
+QDRANT_URL = config["qdrant"]["url"]
+COLLECTION_NAME = config["qdrant"]["collection"]
+LLM_MODEL_NAME = config["models"]["llm_model_name"]
+EMBED_MODEL_NAME = config["models"]["embedding_model_name"]
 
-LLM_MODEL_NAME = "google/flan-t5-large"
+logger.info("Starting compare_llm_vs_rag.py")
 
-# Only one embed model can be used at a time; pick the one you prefer:
-EMBED_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
-# Uncomment if you want to switch to E5-based embeddings:
-# EMBED_MODEL_NAME = "intfloat/multilingual-e5-small"
-
-# --------------------------------------------------
-# Device Detection
-# --------------------------------------------------
-def get_device() -> torch.device:
-    """
-    Detect GPU, MPS (Apple Silicon), or fallback to CPU.
-
-    Returns:
-        torch.device: The best available torch device.
-    """
-    # Try CUDA
-    try:
-        if torch.cuda.is_available():
-            logger.info("Using CUDA (GPU).")
-            return torch.device("cuda")
-    except Exception as exc:
-        logger.warning(f"CUDA check failed: {exc}")
-
-    # Try MPS (Apple Silicon)
-    try:
-        if torch.backends.mps.is_available():
-            logger.info("Using MPS (Apple Silicon).")
-            return torch.device("mps")
-    except AttributeError:
-        logger.warning("MPS is not supported in this environment.")
-    except Exception as exc:
-        logger.warning(f"MPS check failed: {exc}")
-
-    # Fallback to CPU
-    logger.info("Using CPU.")
-    return torch.device("cpu")
 
 # --------------------------------------------------
 # Main Routine
@@ -238,21 +194,25 @@ Answer:
         default_answer = answer_with_llm_direct(query)
         # (b) RAG-based answer
         rag_answer = answer_with_rag(query)
+        # (a) Direct LLM answer
+        default_answer = answer_with_llm_direct(query)
+        # (b) RAG-based answer (with alignment)
+        rag_raw = answer_with_rag(query)
+        # Example: user_role could be determined by your user management system
+        rag_answer_aligned = align_answer(rag_raw, user_role="manager")
 
         # Print comparison
-        print("\n=== COMPARISON ===")
+        print("\n=== COMPARISON ===\n")
         print(f"QUESTION: {query}")
         print("\n[DEFAULT LLM ANSWER (no retrieval)]:")
         print(default_answer)
         print("-" * 40)
         print("[RAG ANSWER (with retrieval)]:")
         print(rag_answer)
-        print("===")
-                # ...
-        rag_answer_raw = answer_with_rag(query)
-        rag_answer_aligned = align_answer(rag_answer_raw, user_role="manager")  
+        print("-" * 40)
         # or user_role = "employee", etc.
-        print("[RAG ANSWER (with alignment)]:", rag_answer_aligned)
+        print("[RAG ANSWER (with alignment)]:")
+        print(rag_answer_aligned)
 
 
 if __name__ == "__main__":

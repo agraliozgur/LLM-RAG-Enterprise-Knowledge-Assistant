@@ -1,0 +1,21 @@
+# FILE: project_settings.yaml
+
+qdrant:
+  url: "http://localhost:6333"
+  collection: "enterprise_chunks"
+
+models:
+  embedding_model_name: "sentence-transformers/all-MiniLM-L6-v2"
+  llm_model_name: "google/flan-t5-large"
+  # If you have a locally fine-tuned model, specify the path:
+  # llm_model_name: "./models/my_finetuned_flan_t5_large"
+
+pipeline:
+  # Additional pipeline configurations
+  max_answer_length: 512
+  temperature: 0.0
+
+mlops:
+  monitoring_interval: "60s"
+  model_registry_path: "./models/registry"
+  retraining_trigger_metric: "accuracy"
