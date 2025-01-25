@@ -1,14 +1,22 @@
-# Enterprise-Knowledge-Assistant
+# LLM-RAG Enterprise-Knowledge-Assistant
 
-A **Retrieval-Augmented Generation (RAG)** system for answering corporate document queries using an LLM, with alignment for security and ethics, plus MLOps integrations.
+A **Retrieval-Augmented Generation (RAG)** system for answering corporate document queries using an LLM, with alignment for security and ethics, plus MLOps integrations. 
+The models used in this project were intentionally chosen to not be excessively large. This ensures that the project can run on various systems, including CPU, GPU, or Apple's MPS for Silicon-based devices. For example, I successfully ran the large model on a 2023 M2 Pro MacBook. If a better GPU setup is available, larger language models (LLMs) can be utilized for more effective results.
+
+Despite working with over 1,000 data samples, I achieved impressive results in both alignment and retrieving relevant information. If necessary, the dataset can be expanded, the model can be changed, or the embedding extraction model can be replaced. The project is designed to efficiently retrieve information from documents using a Retrieval-Augmented Generation (RAG) pipeline.
+
+Additionally, a data flow pipeline can be implemented for future iterations, or you can contribute to the development of these features. This project supports directly reading various file types, extracting their text, storing them in a database, generating vector embeddings, and enabling queries with RAG. Furthermore, the LLM component has been aligned with proper policies and safeguards, making it ready for immediate use.
+
+Future work could include deploying this system as a service, from data collection to deployment.
 
 ---
 
 ## Overview
 
 **Enterprise Knowledge Assistant** is designed to:
+- Create synthetic data using Generative AI.
 - Preprocess corporate documents from various formats.
-- Embed and index documents in a vector database (e.g., Qdrant).
+- Embed and index documents in a vector database (e.g., Qdrant) using `sentence-transformers/all-MiniLM-L6-v2` model.
 - Leverage an LLM (default: `google/flan-t5-large`) for generating answers.
 - Use a retrieval pipeline to provide grounded responses.
 - Apply alignment checks to ensure compliance with corporate policies.
@@ -56,7 +64,7 @@ corporate_info_assistant/
 ├── requirements.txt
 ├── .gitignore
 └── README.md
-docker run --name qdrant -v ./data/vector_index:/qdrant/storage  -p 6333:6333 qdrant/qdrant:latest
+
 
 
 ---
@@ -144,16 +152,7 @@ python scripts/mlops_pipeline.py
 ---
 
 ## Saving & Reusing a Fine-Tuned Model
-
-If you fine-tune `google/flan-t5-large`:
-1. Run your fine-tuning script (not shown here).
-2. Use `utils.save_model(finetuned_model, tokenizer, "./models/my_finetuned_flan_t5_large")`.
-3. Update `project_settings.yaml`:
-   ```yaml
-   models:
-     llm_model_name: "./models/my_finetuned_flan_t5_large"
-   ```
-4. Future scripts will saving & reusing a Fine-Tuned model and load your local checkpoint instead of the base model from Hugging Face.
+Future scripts will saving & reusing a Fine-Tuned model and load your local checkpoint instead of the base model from Hugging Face.
 
 ---
 

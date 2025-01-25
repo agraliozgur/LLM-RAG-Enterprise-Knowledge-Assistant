@@ -23,9 +23,9 @@ SEED = 42
 random.seed(SEED)
 np.random.seed(SEED)
 torch.manual_seed(SEED)
-# HfFolder.save_token(HF_TOKEN)
-HfFolder.save_token('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')
-# HF_TOKEN = os.environ.get('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', "")  # or store in .env / secrets manager
+# HfFolder.save_token(YOUR_HF_TOKEN)
+HfFolder.save_token('YOUR_HF_TOKEN')
+# HF_TOKEN = os.environ.get('YOUR_HF_TOKEN', "")  # or store in .env / secrets manager
 
 def main():
     # ------------------------------------------------------------
