@@ -7,8 +7,9 @@ A **Retrieval-Augmented Generation (RAG)** system for answering corporate docume
 ## Overview
 
 **Enterprise Knowledge Assistant** is designed to:
+- Create synthetic data using Generative AI.
 - Preprocess corporate documents from various formats.
-- Embed and index documents in a vector database (e.g., Qdrant).
+- Embed and index documents in a vector database (e.g., Qdrant) using `sentence-transformers/all-MiniLM-L6-v2` model.
 - Leverage an LLM (default: `google/flan-t5-large`) for generating answers.
 - Use a retrieval pipeline to provide grounded responses.
 - Apply alignment checks to ensure compliance with corporate policies.
