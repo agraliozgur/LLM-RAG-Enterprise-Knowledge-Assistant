@@ -68,7 +68,7 @@ def extract_text_from_txt(txt_path: str) -> list:
     """
     Reads a .txt file line by line, cleans each valid line,
     and returns a list of chunks. A valid line is non-empty
-    and has at least 100 characters.
+    and has at least 70 characters.
 
     Args:
         txt_path (str): The path to the .txt file.
@@ -83,9 +83,9 @@ def extract_text_from_txt(txt_path: str) -> list:
             if not original_line:
                 print(f"Skipping empty line {line_number}.")
                 continue
-            if len(original_line) < 100:
+            if len(original_line) < 70:
                 print(f"Skipping line {line_number} "
-                      f"(length {len(original_line)} < 100).")
+                      f"(length {len(original_line)} < 70).")
                 continue
             cleaned_line = clean_text(original_line)
             if cleaned_line:
@@ -617,3 +617,5 @@ if __name__ == "__main__":
     processed_files_log = "../data/cleaned_data/all_processed_files.log"  # Log file path
 
     preprocess_data_lake(data_lake_directory, output_jsonl_file, processed_files_log)
+
+

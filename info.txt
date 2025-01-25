@@ -1,5 +1,0 @@
-2. Ortalama Veri Miktarı Önerisi
-Gerçek Kurumsal Doküman Senaryosu: Eğer şirketin dokümanları (politikalar, kılavuzlar, raporlar vb.) çok kapsamlıysa, rahatlıkla birkaç binden on binlere ulaşabilir.
-RAG Kalitesi İçin İdeal: En azından birkaç yüz dokümanlık veya birkaç MB boyutunda bir veriyle başlayabilirsiniz. Gerçek değerli bir performans farkı görmek için 5.000-10.000 paragraf/cümle “chunk” (bölüm) düzeyi veri genelde tatmin edici olur.
-Fine-Tuning veya RLHF Aşaması: Eğer modeli kendi kurumsal politikanıza göre ince ayar (fine-tuning) yapmak istiyorsanız, 1.000 ila 10.000 arası soru-cevap örnek seti (kurumsal yönergeleri yansıtan) size gözle görülür bir ilerleme sunacaktır.
-Özetle, küçük bir PoC (Proof of Concept) için 100–500 doküman, üretim senaryosu içinse en az 2.000-5.000 doküman ve hatta üzerinde bir veri kümesi idealdir.

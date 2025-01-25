@@ -1,24 +1,5 @@
 # Enterprise-Knowledge-Assistant
 
-1. **compare_llm_vs_rag.py** (revised / final version)  
-2. **project_settings.yaml** (sample YAML configuration)  
-3. **utils.py** (common utilities for logging, config loading, device detection, embedding retrieval, etc.)  
-4. **mlops_pipeline.py** (a simple placeholder for MLOps tasks)  
-5. **README.md** (detailed instructions for setup, running, and extending the project)
-
-This example demonstrates:
-
-- How to **centralize configurations** in `project_settings.yaml`.  
-- How to **load configurations** in each script using `utils.py`.  
-- How to **compare direct LLM vs. RAG** in `compare_llm_vs_rag.py` (your core logic).  
-- How to **include alignment** logic for final answers.  
-- Where and how to **save fine-tuned models** (best practices).  
-- Basic **MLOps pipeline** structure in `mlops_pipeline.py`.
-
-Below is a sample **README** that explains how to set up, run, and maintain the project. Adjust details to match your environment and organization standards.
-
-```markdown
-
 A **Retrieval-Augmented Generation (RAG)** system for answering corporate document queries using an LLM, with alignment for security and ethics, plus MLOps integrations.
 
 ---
@@ -47,30 +28,36 @@ Key components:
 
 ## Project Structure
 
-```
+
 corporate_info_assistant/
 ├── config/
-│   └── project_settings.yaml        # Global YAML config
+│   └── project_settings.yaml
 ├── data/
-│   ├── raw/                         # Unprocessed files
-│   ├── cleaned_data/                # Preprocessed data (JSONL, logs, etc.)
-│   └── vector_index/                # Local Qdrant or 
-│   ├── cleaned_data/                # Local Qdrant or other index store
+│   └── raw/                
+      └── image_files/
+      ├── txt_files/
+      ├── pdf_files/
+      ├── html_files/
+│   └── cleaned_data/  
+      └───all_processed_data.jsonl 
+│   └── vector_index/       
 ├── scripts/
 │   ├── data_preprocessing.py
 │   ├── create_synthetic_data_gemini.py
+│   ├── save_dataset_to_huggingface.py
 │   ├── embed_and_index.py
 │   ├── alignment.py
 │   ├── rag_inference.py
 │   ├── compare_llm_vs_rag.py
 │   ├── mlops_pipeline.py
 │   └── utils.py
-├── models/
-│   └── my_finetuned_flan_t5_large/  # Example local model checkpoint
-├── tests/                           # Unit/Integration tests
+├── tests/
+│   └── test_alignment.py            # model test differences and example of questions
 ├── requirements.txt
+├── .gitignore
 └── README.md
-```
+docker run --name qdrant -v ./data/vector_index:/qdrant/storage  -p 6333:6333 qdrant/qdrant:latest
+
 
 ---
 
@@ -91,6 +78,8 @@ corporate_info_assistant/
 3. **Install dependencies**:
    ```bash
    pip install -r requirements.txt
+   or
+   pip install -r requirements.txt --break-system-packages 
    ```
    Make sure `requirements.txt` includes:
    - `torch`, `transformers`
@@ -114,23 +103,30 @@ corporate_info_assistant/
 
 ## Usage
 
-### 1. Preprocess Data
+### 1. Creating synthetic data using Gemini1.5-Flash and publishing data to HuggingFace as a dataset
+```bash
+python scripts/create_synhetic_data_gemini.py
+python scripts/save_dataset_to_huggingface.py 
+```
+- Generates additional corporate data for testing or training to txt file and publish to huggignface as a dataset.`data/cleaned_data/`.
+### 2. Preprocess Data
 ```bash
 python scripts/data_preprocessing.py
 ```
-- Cleans, tokenizes, or chunks raw files into `data/cleaned_data/`.
+- Cleans, tokenizes, or chunks raw files into `data/cleaned_data/`. These can read and get text from  ".pdf", ".docx", ".html", ".txt", ".rtf", ".pptx", ".xlsx", ".csv", ".png", ".jpg", ".jpeg", ".tiff", ".bmp",".zip", ".tar", ".gz", and ".bz2" extension data.
 
 ### 2. Create Synthetic Test Data (Optional)
 ```bash
 python scripts/create_synthetic_data_gemini.py
 ```
-- Generates additional corporate data for testing or training.
+- 
 
-### 3. Embed & Index
+### 3. Embed & Index and Testing Similarity
 ```bash
 python scripts/embed_and_index.py
+python scripts/get_similar_chunks_qdrant.py
 ```
-- Converts cleaned text chunks to embeddings and stores them in Qdrant.
+- Converts cleaned text chunks to embeddings and stores them in Qdrant. Also can test with questions to find most similartiy of this model in the dataset.
 
 ### 4. Compare LLM vs. RAG
 ```bash
@@ -157,7 +153,7 @@ If you fine-tune `google/flan-t5-large`:
    models:
      llm_model_name: "./models/my_finetuned_flan_t5_large"
    ```
-4. Future scripts will load your local checkpoint instead of the base model from Hugging Face.
+4. Future scripts will saving & reusing a Fine-Tuned model and load your local checkpoint instead of the base model from Hugging Face.
 
 ---
 
@@ -182,25 +178,3 @@ If you fine-tune `google/flan-t5-large`:
 Specify your license (e.g., MIT, Apache 2.0) or keep it proprietary within your organization.
 
 ---
-
-**Happy Coding!**  
-_Enterprise Knowledge Assistant_  
-```
-
----
-
-# Final Notes
-
-- The above **sample code** and **config** files are designed to be **modular** and **extensible**.  
-- Adjust imports and references (`langchain.embeddings`, `langchain.vectorstores`, `alignment`) to match your actual project structure.  
-- Ensure your environment (`requirements.txt`) is up to date with all necessary packages.  
-- Remember to **test thoroughly** (both unit tests in `tests/` and integration tests with real data).  
-
-With this structure, you have:
-- A clear place for **project-wide configuration** (`project_settings.yaml`)  
-- Centralized **utility functions** in `utils.py`  
-- A straightforward script to **compare direct LLM vs. RAG** with alignment in `compare_llm_vs_rag.py`  
-- A scaffolding for **MLOps** monitoring and future integration in `mlops_pipeline.py`  
-- A well-documented **README** for other developers and users.  
-
-Use this as a **foundation** to build a robust, production-ready **Enterprise Knowledge Assistant** system. Good luck!
