@@ -1,4 +1,4 @@
-# Enterprise-Knowledge-Assistant
+# LLM-RAG Enterprise-Knowledge-Assistant
 
 A **Retrieval-Augmented Generation (RAG)** system for answering corporate document queries using an LLM, with alignment for security and ethics, plus MLOps integrations. 
 The models used in this project were intentionally chosen to not be excessively large. This ensures that the project can run on various systems, including CPU, GPU, or Apple's MPS for Silicon-based devices. For example, I successfully ran the large model on a 2023 M2 Pro MacBook. If a better GPU setup is available, larger language models (LLMs) can be utilized for more effective results.
