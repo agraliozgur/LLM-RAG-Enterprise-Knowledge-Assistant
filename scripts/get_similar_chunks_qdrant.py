@@ -1,48 +1,22 @@
-import os
-import json
-import uuid
-from typing import List
 import torch
 from sentence_transformers import SentenceTransformer
 from qdrant_client import QdrantClient
-from qdrant_client.http.models import Distance, VectorParams, CollectionStatus
-import logging
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+from utils import load_config, get_logger, get_device
 
-def get_device() -> torch.device:
-    """
-    Determines the best available device (CUDA, MPS, or CPU) for model computation.
+# 1) Load Configuration & Logger
+# --------------------------------------------------
+config = load_config()
+logger = get_logger(__name__)
 
-    Returns:
-        torch.device: The selected device.
-    """
-    try:
-        if torch.cuda.is_available():
-            logging.info("Using CUDA for computation.")
-            return torch.device('cuda')
-    except Exception as e:
-        logging.warning(f"CUDA availability check failed: {e}")
-
-    try:
-        if torch.backends.mps.is_available():
-            logging.info("Using MPS for computation.")
-            return torch.device('mps')
-    except AttributeError:
-        logging.warning("MPS support is not available.")
-    except Exception as e:
-        logging.warning(f"MPS availability check failed: {e}")
-
-    logging.info("Falling back to CPU for computation.")
-    return torch.device('cpu')
-
-# Constants
-EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
-# EMBEDDING_MODEL_NAME = "intfloat/multilingual-e5-small"
-QDRANT_URL = "http://localhost:6333"
-COLLECTION_NAME = "enterprise_chunks"
+# Reading from YAML config
+QDRANT_URL = config["qdrant"]["url"]
+COLLECTION_NAME = config["qdrant"]["collection"]
+LLM_MODEL_NAME = config["models"]["llm_model_name"]
+EMBED_MODEL_NAME = config["models"]["embedding_model_name"]
 TOP_K_RESULTS = 3
+
+logger.info("Starting get_similar_chunks_qdrant.py")
 
 def load_embedding_model(model_name: str, device: torch.device) -> SentenceTransformer:
     """
@@ -55,7 +29,7 @@ def load_embedding_model(model_name: str, device: torch.device) -> SentenceTrans
     Returns:
         SentenceTransformer: The loaded embedding model.
     """
-    logging.info(f"Loading embedding model '{model_name}' on device '{device}'.")
+    logger.info(f"Loading embedding model '{model_name}' on device '{device}'.")
     return SentenceTransformer(model_name, device=device)
 
 def initialize_qdrant_client(url: str) -> QdrantClient:
@@ -68,7 +42,7 @@ def initialize_qdrant_client(url: str) -> QdrantClient:
     Returns:
         QdrantClient: The initialized Qdrant client.
     """
-    logging.info(f"Connecting to Qdrant at '{url}'.")
+    logger.info(f"Connecting to Qdrant at '{url}'.")
     return QdrantClient(url=url)
 
 def query_similar_chunks(
@@ -89,11 +63,11 @@ def query_similar_chunks(
         top_k (int, optional): The number of top similar chunks to retrieve. Defaults to TOP_K_RESULTS.
     """
     # Encode the user query with a "query: " prefix to maintain consistency with stored embeddings
-    logging.info("Encoding the user query.")
+    logger.info("Encoding the user query.")
     query_embedding = model.encode([f"query: {user_query}"], convert_to_numpy=True)[0].tolist()
 
     # Perform the search in Qdrant
-    logging.info(f"Searching for top {top_k} similar chunks in collection '{collection_name}'.")
+    logger.info(f"Searching for top {top_k} similar chunks in collection '{collection_name}'.")
     search_results = qdrant_client.search(
         collection_name=collection_name,
         query_vector=query_embedding,
@@ -101,14 +75,14 @@ def query_similar_chunks(
     )
 
     # Display the search results
-    logging.info("Search Results:")
+    logger.info("Search Results:")
     for hit in search_results:
         score = hit.score
         payload = hit.payload
         chunk_id = payload.get('chunk_id')
         source_file = payload.get('source_file')
         text = payload.get('text')
-        logging.info(
+        logger.info(
             f"Score: {score:.4f}, "
             f"Chunk ID: {chunk_id}, "
             f"Source: {source_file}, "
@@ -124,7 +98,7 @@ def main() -> None:
     device = get_device()
 
     # Load the embedding model
-    model = load_embedding_model(EMBEDDING_MODEL_NAME, device)
+    model = load_embedding_model(EMBED_MODEL_NAME, device)
 
     # Initialize the Qdrant client
     qdrant_client = initialize_qdrant_client(QDRANT_URL)

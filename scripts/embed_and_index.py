@@ -1,64 +1,32 @@
-import os
 import json
 import uuid
-from typing import List, Dict, Any
-import logging
-
 import torch
-from sentence_transformers import SentenceTransformer
+from typing import List, Dict, Any
 from qdrant_client import QdrantClient
+from sentence_transformers import SentenceTransformer
+from utils import load_config, get_logger, get_device
 from qdrant_client.http.models import (
     Distance,
     VectorParams,
     CollectionStatus,
 )
 
-# -------------------------------------------------------------------
-# Setup Logging
-# -------------------------------------------------------------------
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
-logger = logging.getLogger(__name__)
+# 1) Load Configuration & Logger
+# --------------------------------------------------
+config = load_config()
+logger = get_logger(__name__)
 
-# -------------------------------------------------------------------
-# Constants & Global Config
-# -------------------------------------------------------------------
-EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
-QDRANT_URL = "http://localhost:6333"
-COLLECTION_NAME = "enterprise_chunks"
+# Reading from YAML config
+QDRANT_URL = config["qdrant"]["url"]
+COLLECTION_NAME = config["qdrant"]["collection"]
+LLM_MODEL_NAME = config["models"]["llm_model_name"]
+EMBED_MODEL_NAME = config["models"]["embedding_model_name"]
+
+logger.info("Starting embed_and_index.py")
+
 BATCH_SIZE = 32  # Adjust batch size as needed
 JSONL_PATH = "../data/cleaned_data/all_processed_data.jsonl"  # Path to your JSONL file
 
-# -------------------------------------------------------------------
-# Device Management
-# -------------------------------------------------------------------
-def get_device() -> torch.device:
-    """
-    Determine the best available device (CUDA, MPS, or CPU) for torch.
-    """
-    # Try CUDA
-    try:
-        if torch.cuda.is_available():
-            logger.info("Using CUDA (GPU).")
-            return torch.device("cuda")
-    except Exception as e:
-        logger.warning(f"CUDA check failed: {e}")
-
-    # Try MPS (Apple Silicon)
-    try:
-        if torch.backends.mps.is_available():
-            logger.info("Using MPS (Apple Silicon).")
-            return torch.device("mps")
-    except AttributeError:
-        logger.warning("MPS is not supported in this environment.")
-    except Exception as e:
-        logger.warning(f"MPS check failed: {e}")
-
-    # Fallback to CPU
-    logger.info("Using CPU.")
-    return torch.device("cpu")
 
 # -------------------------------------------------------------------
 # Embedding Model
@@ -264,7 +232,7 @@ def main():
     device = get_device()
 
     # Load model
-    model = load_embedding_model(EMBEDDING_MODEL_NAME, device=device)
+    model = load_embedding_model(EMBED_MODEL_NAME, device=device)
 
     # Connect to Qdrant
     qdrant_client = QdrantClient(url=QDRANT_URL)

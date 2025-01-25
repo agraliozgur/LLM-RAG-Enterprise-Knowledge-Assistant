@@ -1,16 +1,4 @@
-import os
-import json
-import torch
-from sentence_transformers import SentenceTransformer
-from qdrant_client import QdrantClient
-from transformers import T5ForConditionalGeneration, T5Tokenizer
-from qdrant_client.http.models import Filter, FieldCondition, MatchValue
-
-# Örnek: GenAI kütüphanesinin kullanımını varsayalım. Gerçek API çağrıları için ilgili kütüphaneyi kullanmalısınız.
 import google.generativeai as genai
-import json
-import os
-import os
 import time
 import logging
 

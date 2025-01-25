@@ -5,10 +5,7 @@
 # approach using a Qdrant vector store for enterprise knowledge retrieval.
 # --------------------------------------------------
 
-import logging
 import sys
-
-import torch
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 
 # Community-based or specialized imports for embeddings/vector stores
@@ -17,7 +14,6 @@ from langchain_community.vectorstores import Qdrant
 from langchain_huggingface import HuggingFacePipeline
 
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams  # noqa: F401  # (In case needed for expansions)
 
 # For RetrievalQA
 from langchain.chains import RetrievalQA
