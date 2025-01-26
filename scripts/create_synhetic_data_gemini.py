@@ -7,15 +7,15 @@ API_KEY = "YOUR_API_TOKEN"
 
 
 # Configuration
-MODEL_NAME = "gemini-1.5-pro-latest"
+
 MODEL_NAME = "gemini-1.5-flash-latest"
 OUTPUT_FILENAME = "../data/raw/txt_files/synthetic_ekm_data.txt"
-OUTPUT_FILENAME = "../data/raw/txt_files/synthetic_ekm_data_flash.txt"
+# OUTPUT_FILENAME = "../data/raw/txt_files/synthetic_ekm_data_flash.txt"
 
 # Setup logging
 logging.basicConfig(
     # filename='synthetic_ekm_generator.log',
-    filename='synthetic_ekm_generator2.log',
+    filename='synthetic_ekm_generator.log',
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )

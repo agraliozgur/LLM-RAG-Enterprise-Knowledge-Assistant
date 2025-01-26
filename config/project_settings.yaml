@@ -1,5 +1,3 @@
-# FILE: project_settings.yaml
-
 qdrant:
   url: "http://localhost:6333"
   collection: "enterprise_chunks"

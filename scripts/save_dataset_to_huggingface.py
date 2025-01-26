@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# FILE: fine_tune_and_push_to_hf.py
-
 import os
 import random
 import numpy as np
@@ -48,7 +45,6 @@ def main():
     # Optionally, push the entire dataset (train + eval) to your HF account
     print("Pushing dataset to Hugging Face Hub...")
     # This will create a new dataset under your username or org
-    # e.g. "your-username/my-corporate-qa-dataset"
     dataset_repo = f"{HF_USERNAME}/{DATASET_REPO_NAME}"
     ds_split.push_to_hub(dataset_repo,)
 
