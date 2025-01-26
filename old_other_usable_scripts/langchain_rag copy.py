@@ -1,6 +1,3 @@
-##################################################
-# FILE: compare_llm_vs_rag.py
-##################################################
 import json
 import torch
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
