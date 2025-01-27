@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# FILE: alignment.py
 # --------------------------------------------------
 # Placeholder for advanced LLM alignment (policy filtering, RLHF, etc.)
 # --------------------------------------------------

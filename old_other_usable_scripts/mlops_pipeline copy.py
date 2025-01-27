@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-# FILE: mlops_pipeline.py
-# --------------------------------------------------
-# Demonstrates a minimal approach to MLOps with MLflow for experiment logging
-# and artifacts tracking.
-# --------------------------------------------------
-
 import logging
 import mlflow
 

@@ -1,16 +1,3 @@
-
-# HfFolder.save_token('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')
-# HF_TOKEN = os.environ.get('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', "")  # or store in .env / secrets manager
-#!/usr/bin/env python3
-# FILE: mlops_pipeline.py
-# --------------------------------------------------
-# Demonstrates how to integrate MLOps with:
-#  1) MLflow for experiment logging
-#  2) Hugging Face Hub for model versioning
-#  3) Basic fine-tuning of a T5-like model (Flan-T5)
-#     using "all_processed_data.jsonl" for demonstration
-# --------------------------------------------------
-
 import os
 import logging
 import json

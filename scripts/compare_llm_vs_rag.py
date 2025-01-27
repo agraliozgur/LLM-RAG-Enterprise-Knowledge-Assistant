@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# FILE: compare_llm_vs_rag.py
 # --------------------------------------------------
 # Compare a direct LLM approach with an RAG (Retrieval-Augmented Generation) 
 # approach using a Qdrant vector store for enterprise knowledge retrieval.
