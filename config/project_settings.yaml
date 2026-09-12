@@ -1,6 +1,9 @@
 qdrant:
   url: "http://localhost:6333"
   collection: "enterprise_chunks"
+  # Legacy collection above remains available to the diagnostic CLI.  The
+  # Streamlit collection MVP creates one collection per logical knowledge base.
+  collection_prefix: "rag_collection_"
 
 models:
   embedding_model_name: "sentence-transformers/all-MiniLM-L6-v2"
@@ -12,6 +15,8 @@ pipeline:
   # Additional pipeline configurations
   max_answer_length: 512
   temperature: 0.0
+  relevance_threshold: 0.45
+  retrieval_candidates: 5
 
 mlops:
   monitoring_interval: "60s"

@@ -2,6 +2,10 @@ import os
 import yaml
 import logging
 import torch
+from pathlib import Path
+
+# Project root is the parent of the directory that contains this file.
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 def load_config(config_path: str = None) -> dict:
     """
@@ -9,13 +13,14 @@ def load_config(config_path: str = None) -> dict:
     
     Args:
         config_path (str, optional): Path to the YAML config file.
-                                     If not provided, defaults to 
-                                     '../config/project_settings.yaml'.
+                                     If not provided, resolves to
+                                     <project_root>/config/project_settings.yaml,
+                                     which works from any working directory.
     Returns:
         dict: Parsed configuration dictionary.
     """
     if config_path is None:
-        config_path = os.path.join("../config", "project_settings.yaml")
+        config_path = _PROJECT_ROOT / "config" / "project_settings.yaml"
 
     with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)

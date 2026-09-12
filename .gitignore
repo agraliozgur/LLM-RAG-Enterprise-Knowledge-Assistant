@@ -1,1 +1,14 @@
-data/vector_index
+data/vector_index/
+data/cleaned_data/
+# Customer and personal source files are local-only. Existing tracked demo
+# documents remain tracked; this prevents accidental publication of new uploads.
+data/raw/
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+__pycache__/
+*.py[cod]
+data/
+rag-mvp-plan.md
+*.pyc

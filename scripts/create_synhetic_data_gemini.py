@@ -1,16 +1,17 @@
 import google.generativeai as genai
 import time
 import logging
+import os
+from pathlib import Path
 
 # Configuration
-API_KEY = "YOUR_API_TOKEN"
+API_KEY = os.environ.get("GEMINI_API_KEY")
 
-
-# Configuration
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 MODEL_NAME = "gemini-1.5-flash-latest"
-OUTPUT_FILENAME = "../data/raw/txt_files/synthetic_ekm_data.txt"
-# OUTPUT_FILENAME = "../data/raw/txt_files/synthetic_ekm_data_flash.txt"
+OUTPUT_FILENAME = str(_PROJECT_ROOT / "data" / "raw" / "txt_files" / "synthetic_ekm_data.txt")
+# OUTPUT_FILENAME = str(_PROJECT_ROOT / "data" / "raw" / "txt_files" / "synthetic_ekm_data_flash.txt")
 
 # Setup logging
 logging.basicConfig(
@@ -20,9 +21,12 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-# Configure the GenAI model
-genai.configure(api_key=API_KEY)
-model = genai.GenerativeModel(MODEL_NAME)
+def get_model():
+    """Configure the optional Gemini client only when a key is available."""
+    if not API_KEY:
+        raise RuntimeError("Set GEMINI_API_KEY before running this optional script.")
+    genai.configure(api_key=API_KEY)
+    return genai.GenerativeModel(MODEL_NAME)
 
 def generate_ekm_synthetic_data(system_prompt, prompt):
     """
@@ -38,7 +42,7 @@ def generate_ekm_synthetic_data(system_prompt, prompt):
     full_prompt = f"{system_prompt}\n\n{prompt}"
     
     try:
-        response = model.generate_content(full_prompt)
+        response = get_model().generate_content(full_prompt)
         if response.text:
             paragraph = response.text.strip()
             logging.info("Successfully generated a paragraph.")
