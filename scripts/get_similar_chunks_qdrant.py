@@ -68,11 +68,11 @@ def query_similar_chunks(
 
     # Perform the search in Qdrant
     logger.info(f"Searching for top {top_k} similar chunks in collection '{collection_name}'.")
-    search_results = qdrant_client.search(
+    search_results = qdrant_client.query_points(
         collection_name=collection_name,
-        query_vector=query_embedding,
+        query=query_embedding,
         limit=top_k
-    )
+    ).points
 
     # Display the search results
     logger.info("Search Results:")

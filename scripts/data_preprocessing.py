@@ -1,8 +1,10 @@
+import hashlib
 import os
 import re
 import uuid
 import json
 import shutil
+import tempfile
 import zipfile
 import tarfile
 import csv
@@ -17,8 +19,17 @@ from PIL import Image
 import nltk
 from nltk.tokenize import sent_tokenize
 
-# Ensure the required NLTK data is downloaded
-nltk.download('punkt')
+
+def _sentence_tokenize(text: str) -> list:
+    """Tokenize lazily so opening Streamlit does not make a network request."""
+    try:
+        return sent_tokenize(text, language='english')
+    except LookupError:
+        # NLTK 3.9 may require both resources.  This retains the former
+        # automatic setup behavior, but only when sentence chunking is used.
+        nltk.download('punkt', quiet=True)
+        nltk.download('punkt_tab', quiet=True)
+        return sent_tokenize(text, language='english')
 
 def clean_text(text: str) -> str:
     """
@@ -48,8 +59,10 @@ def clean_text(text: str) -> str:
     # 2. Remove HTML tags
     text = re.sub(r'<.*?>', '', text)
 
-    # 3. Remove unwanted characters (keep letters, digits, and punctuation)
-    text = re.sub(r'[^A-Za-z0-9.,\'!?;:()\s]', '', text)
+    # 3. Keep Unicode letters (including French diacritics) and useful
+    # punctuation.  The former ASCII-only rule corrupted français, élève, and
+    # every non-English alphabet before embeddings were generated.
+    text = re.sub(r"[^\w.,'!?;:()\-–—€%/\s]", "", text, flags=re.UNICODE)
 
     # 4. Replace newline characters with space
     text = text.replace('\n', ' ')
@@ -428,7 +441,7 @@ def chunk_text_sentence_based_adjusted(
         list: A list of text chunks that respect sentence boundaries.
     """
     # Tokenize sentences in English
-    sentences = sent_tokenize(text, language='english')
+    sentences = _sentence_tokenize(text)
     chunks = []
     current_chunk = []
     current_length = 0
@@ -509,35 +522,112 @@ def save_chunks_to_jsonl(
         }
         output_file.write(json.dumps(json_record, ensure_ascii=False) + '\n')
 
+
+def preprocess_document(
+    file_path: str,
+    collection_name: str,
+    document_id: str,
+    output_file_path: str,
+) -> list:
+    """Extract and chunk one collection document into its own JSONL artifact.
+
+    This is deliberately separate from :func:`preprocess_data_lake`, which is
+    retained for the legacy single-JSONL command-line workflow.  Keeping one
+    artifact per document makes collection ingestion incremental and prevents
+    new uploads from rewriting the existing generated corpus.
+    """
+    source_path = os.path.abspath(file_path)
+    source_file = os.path.basename(source_path)
+    extension = os.path.splitext(source_file)[1].lower()
+
+    with tempfile.TemporaryDirectory(prefix="rag_extract_") as temp_dir:
+        text_content = process_file(source_path, temp_dir)
+
+    if not text_content or not text_content.strip():
+        raise ValueError(f"No valid text extracted from: {source_file}")
+
+    if extension == ".txt":
+        chunks = extract_text_from_txt(source_path)
+    else:
+        chunks = chunk_text_sentence_based_adjusted(text_content)
+
+    if not chunks:
+        raise ValueError(f"No chunks produced from: {source_file}")
+
+    records = [
+        {
+            "collection_name": collection_name,
+            "document_id": document_id,
+            "source_file": source_file,
+            "source_path": f"data/raw/{collection_name}/{source_file}",
+            "extension": extension,
+            "chunk_id": chunk_id,
+            "text": chunk,
+        }
+        for chunk_id, chunk in enumerate(chunks)
+    ]
+
+    output_path = os.path.abspath(output_file_path)
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    temporary_path = f"{output_path}.tmp"
+    with open(temporary_path, "w", encoding="utf-8") as output_file:
+        for record in records:
+            output_file.write(json.dumps(record, ensure_ascii=False) + "\n")
+    os.replace(temporary_path, output_path)
+    return records
+
+def _file_content_hash(file_path: str) -> str:
+    """
+    Return the SHA-256 hex digest of a file's bytes.
+
+    Used as a machine-independent, path-independent identity for source files.
+    Same content on any machine → same hash → skip guard fires correctly even
+    when the repository is cloned to a different absolute path.
+    """
+    h = hashlib.sha256()
+    with open(file_path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
 def load_processed_files(log_file_path: str) -> set:
     """
-    Loads a set of already processed file paths from the specified log file.
+    Load the set of already-processed file content-hashes from the log.
+
+    Each line in the log is a SHA-256 hex digest of the source file's bytes,
+    making deduplication independent of file paths and machine names.
 
     Args:
-        log_file_path (str): The path to the log file.
+        log_file_path: Path to the processed-files log.
 
     Returns:
-        set: A set of file paths that have already been processed.
+        set of SHA-256 hex strings for already-processed files.
     """
-    processed_files = set()
+    processed_hashes: set = set()
     if os.path.exists(log_file_path):
-        with open(log_file_path, 'r', encoding='utf-8') as log_file:
+        with open(log_file_path, "r", encoding="utf-8") as log_file:
             for line in log_file:
-                processed_file = line.strip()
-                if processed_file:
-                    processed_files.add(processed_file)
-    return processed_files
+                entry = line.strip()
+                if entry:
+                    processed_hashes.add(entry)
+    return processed_hashes
+
 
 def append_processed_file(log_file_path: str, file_path: str):
     """
-    Appends a processed file path to the log file, indicating it has been handled.
+    Append the SHA-256 content hash of *file_path* to the log.
+
+    Storing the content hash (not the absolute path) means the log remains
+    valid when the repository is moved to a different machine or directory.
 
     Args:
-        log_file_path (str): Path to the log file.
-        file_path (str): Path to the file that was processed.
+        log_file_path: Path to the processed-files log.
+        file_path:     Absolute path of the file that was just processed.
     """
-    with open(log_file_path, 'a', encoding='utf-8') as log_file:
-        log_file.write(file_path + '\n')
+    content_hash = _file_content_hash(file_path)
+    with open(log_file_path, "a", encoding="utf-8") as log_file:
+        log_file.write(content_hash + "\n")
 
 def preprocess_data_lake(
     data_lake_dir: str, 
@@ -568,9 +658,9 @@ def preprocess_data_lake(
         ".zip", ".tar", ".gz", ".bz2"
     }
 
-    # Load already processed files to skip duplicates
-    processed_files = load_processed_files(log_file_path)
-    print(f"Loaded {len(processed_files)} already processed files from log: {log_file_path}")
+    # Load already processed content-hashes to skip files processed on any machine
+    processed_hashes = load_processed_files(log_file_path)
+    print(f"Loaded {len(processed_hashes)} already-processed content hashes from log: {log_file_path}")
 
     with open(output_file_path, 'a', encoding='utf-8') as output_file:
         for root, dirs, files in os.walk(data_lake_dir):
@@ -578,7 +668,8 @@ def preprocess_data_lake(
                 extension = os.path.splitext(fname)[1].lower()
                 if extension in supported_extensions:
                     fpath = os.path.abspath(os.path.join(root, fname))
-                    if fpath in processed_files:
+                    file_hash = _file_content_hash(fpath)
+                    if file_hash in processed_hashes:
                         print(f"Skipping already processed file: {fpath}")
                         continue
 
@@ -609,11 +700,10 @@ def preprocess_data_lake(
     print(f"Processed files are recorded in: {log_file_path}")
 
 if __name__ == "__main__":
-    # Example usage: adjust paths as needed
-    data_lake_directory = "../data/raw"  # Path to your data lake directory
-    output_jsonl_file = "../data/cleaned_data/all_processed_data.jsonl"  # Output JSONL file path
-    processed_files_log = "../data/cleaned_data/all_processed_files.log"  # Log file path
+    from pathlib import Path
+    _PROJECT_ROOT = Path(__file__).resolve().parent.parent
+    data_lake_directory = str(_PROJECT_ROOT / "data" / "raw")
+    output_jsonl_file = str(_PROJECT_ROOT / "data" / "cleaned_data" / "all_processed_data.jsonl")
+    processed_files_log = str(_PROJECT_ROOT / "data" / "cleaned_data" / "all_processed_files.log")
 
     preprocess_data_lake(data_lake_directory, output_jsonl_file, processed_files_log)
-
-

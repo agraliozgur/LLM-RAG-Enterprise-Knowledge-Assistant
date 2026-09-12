@@ -1,22 +1,44 @@
-bs4
-datasets
-huggingface_hub
-langchain
-langchain-community
-lxml
-mlflow
-nltk
-openpyxl
-pdfplumber
-pillow
-PyPDF2
-python-docx
-python-pptx
-pytesseract
-qdrant-client
-sentencepiece
-sentence-transformers
-striprtf
-torch
-transformers
-trl
+# =============================================================================
+# Enterprise Knowledge Assistant — MVP dependencies
+# Pinned to the versions verified in the eka conda environment (Python 3.11).
+# =============================================================================
+
+# --- Document parsing / OCR ---
+pdfplumber==0.11.7
+python-docx==1.2.0
+python-pptx==1.0.2
+openpyxl==3.1.5
+striprtf==0.0.33
+pytesseract==0.3.13          # requires Tesseract binary; see README for install
+pillow==11.3.0
+beautifulsoup4==4.13.5
+lxml==6.0.2
+nltk==3.9.2
+
+# --- Embeddings & vector store ---
+sentence-transformers==5.1.1
+qdrant-client==1.15.1
+# NOTE: qdrant-client 1.15.1 is used with Qdrant server 1.19.1.
+# All APIs used by this project are stable across this range.
+# Suppress the mismatch warning with check_compatibility=False (already applied).
+
+# --- LLM / generation ---
+torch==2.8.0
+transformers==4.57.0
+sentencepiece==0.2.1
+
+# --- UI ---
+streamlit==1.50.0
+
+# --- Configuration ---
+pyyaml==6.0.3
+
+# --- Dataset utilities (save_dataset_to_huggingface.py) ---
+datasets==4.4.1
+huggingface-hub==0.35.3
+numpy==2.0.2
+
+# --- Synthetic data generation (create_synhetic_data_gemini.py) ---
+# google-generativeai is only needed to regenerate synthetic data.
+# It is NOT needed to run the RAG demo.  Install separately if required:
+#   pip install google-generativeai
